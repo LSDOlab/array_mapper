@@ -295,11 +295,11 @@ class NonlinearMappedArray:
     #     new_array = MappedArray(input=self.input, linear_map=self.linear_map, offset=self.offset_map, shape=newshape)
     #     return new_array
 
-    def evaluate(self, input=None):
+    def evaluate(self, input=None, evaluate_input=True):
         '''
         Evaluate the value given an input. If the stored input is a MappedArray, the MappedArray is evaluated using the supplied input
         '''
-        if type(self.input) is MappedArray:
+        if type(self.input) is MappedArray and evaluate_input:
             self.input.evaluate(input)
             input = self.input.value
         elif input is None and self.input is not None:
@@ -321,11 +321,11 @@ class NonlinearMappedArray:
 
         return self.value
     
-    def evaluate_derivative(self, input=None):
+    def evaluate_derivative(self, input=None, evaluate_input=True):
         '''
         Evaluate the derivate given an input. If the stored input is a MappedArray, the MappedArray is evaluated using the supplied input
         '''
-        if type(self.input) is MappedArray:
+        if type(self.input) is MappedArray and evaluate_input:
             self.input.evaluate(input)
             input = self.input.value
         elif input is None and self.input is not None:
@@ -343,7 +343,7 @@ class NonlinearMappedArray:
         sim.run()
         derivative = sim.compute_totals('output', 'input')[('output', 'input')]
 
-        if type(self.input) is MappedArray:
+        if type(self.input) is MappedArray and evaluate_input:
             linear_map = self.input.linear_map.copy()
             if sps.issparse(linear_map):
                 linear_map = linear_map.toarray()
@@ -365,9 +365,15 @@ class NonlinearMappedArray:
 
         return self.derivative
 
-    # TODO: Implement this so it can be used for design geometry optimization
-    # def evaluate_second_derivative(self,input):
-    #     pass
+    def evaluate_second_derivative(self,input):
+        evaluation_model = CSDLEvaluationModel(csdl_model=self.derivative_csdl_model, input=input)
+
+        sim = Simulator(evaluation_model)
+        sim.run()
+        second_derivative = sim.compute_totals('output', 'input')[('output', 'input')]
+
+        self.second_derivative = second_derivative
+        return self.second_derivative
 
 
 def vstack(tup:tuple, combinte_inputs:bool=None):
