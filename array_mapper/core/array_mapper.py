@@ -226,16 +226,20 @@ class NonlinearMappedArray:
         
         # Listing list of attributes
         self.input = input
-        self.csdl_model = csdl_model
-        self.derivative_csdl_model = derivative_csdl_model
+        # self.csdl_model = csdl_model
+        # self.derivative_csdl_model = derivative_csdl_model
         self.value = None
         self.derivative = None
+        self.second_derivative = None
+
+        self.evaluation_simulator = Simulator(csdl_model)
+        if derivative_csdl_model is not None:
+            self.derivative_simulator = Simulator(derivative_csdl_model)
 
         self.evaluate()
         self.evaluate_derivative()
         if derivative_csdl_model is not None:
-            # self.evaluate_second_derivative()
-            pass
+            self.evaluate_second_derivative()
 
     def __str__(self):
         return str(self.value)
@@ -311,9 +315,8 @@ class NonlinearMappedArray:
             input = input.value
             self.input = input
 
-        evaluation_model = CSDLEvaluationModel(csdl_model=self.csdl_model, input=input)
-
-        sim = Simulator(evaluation_model)
+        sim = self.evaluation_simulator
+        sim['input'] = input
         sim.run()
 
         self.value = sim['output']
@@ -323,7 +326,9 @@ class NonlinearMappedArray:
     
     def evaluate_derivative(self, input=None, evaluate_input=True):
         '''
-        Evaluate the derivate given an input. If the stored input is a MappedArray, the MappedArray is evaluated using the supplied input
+        Evaluate the derivate given an input. If the stored input is a MappedArray and evaluate_input=True,
+        the MappedArray is evaluated using the supplied input.
+        Note: This uses the evaluation csdl model and uses csdl to perform the differentiation.
         '''
         if type(self.input) is MappedArray and evaluate_input:
             self.input.evaluate(input)
@@ -337,9 +342,8 @@ class NonlinearMappedArray:
             input = input.value
             self.input = input
 
-        evaluation_model = CSDLEvaluationModel(csdl_model=self.csdl_model, input=input)
-
-        sim = Simulator(evaluation_model)
+        sim = self.evaluation_simulator
+        sim['input'] = input
         sim.run()
         derivative = sim.compute_totals('output', 'input')[('output', 'input')]
 
@@ -365,10 +369,26 @@ class NonlinearMappedArray:
 
         return self.derivative
 
-    def evaluate_second_derivative(self,input):
-        evaluation_model = CSDLEvaluationModel(csdl_model=self.derivative_csdl_model, input=input)
+    def evaluate_second_derivative(self, input=None, evaluate_input=True):
+        '''
+        Evaluate the second derivate given an input. 
+        If the stored input is a MappedArray and evaluate_input=True, the MappedArray is evaluated using the supplied input.
+        Note: This uses csdl's automatic differentiation of the derivative csdl model to compute the second derivatives.
+        '''
+        if type(self.input) is MappedArray and evaluate_input:
+            self.input.evaluate(input)
+            input = self.input.value
+        elif input is None and self.input is not None:
+            input = self.input
+        elif input is None and self.input is None:
+            return
+        elif type(input) is MappedArray:
+            input.evaluate()
+            input = input.value
+            self.input = input
 
-        sim = Simulator(evaluation_model)
+        sim = self.derivative_simulator
+        sim['input'] = input
         sim.run()
         second_derivative = sim.compute_totals('output', 'input')[('output', 'input')]
 
@@ -778,7 +798,7 @@ class NormDerivativeModel(csdl.Model):
             norm = csdl.pnorm(input_csdl, pnorm_type=ord)
         else:
             norm = csdl.pnorm(input_csdl, axis=axes, pnorm_type=ord)
-        norm_expanded = csdl.expand(norm, shape=x.shape, indices='i->ji')
+        norm_expanded = csdl.expand(norm, shape=x.shape, indices='i->ij')
         self.register_output('output', input_csdl/norm_expanded)
 
 def norm(x, ord=2, axes:tuple=(-1,)):
