@@ -831,8 +831,8 @@ class WireframeAreaModel(csdl.Model):
         wireframe = self.parameters['wireframe']
         wireframe_csdl = self.declare_variable('input', shape=wireframe.shape)  # shape should be (nx,ny,num_dims)
         
-        x_vectors = wireframe_csdl[1:,:,:] - wireframe_csdl[:1,:,:]
-        y_vectors = wireframe_csdl[:,1:,:] - wireframe_csdl[:,:1,:]
+        x_vectors = wireframe_csdl[1:,:,:] - wireframe_csdl[:-1,:,:]
+        y_vectors = wireframe_csdl[:,1:,:] - wireframe_csdl[:,:-1,:]
         area_vectors = csdl.cross(x_vectors, y_vectors, axis=-1)
         area_magnitudes = csdl.pnorm(area_vectors, pnorm_type=2, axis=-1)
         wireframe_area = csdl.sum(area_magnitudes)
