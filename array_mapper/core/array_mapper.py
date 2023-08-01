@@ -823,6 +823,35 @@ def norm(x, ord=2, axes:tuple=(-1,)):
     return nonlinear_mapped_array
 
 
+class WireframeAreaModel(csdl.Model):
+    def initialize(self):
+        self.parameters.declare('wireframe')
+
+    def define(self):
+        wireframe = self.parameters['wireframe']
+        wireframe_csdl = self.declare_variable('input', shape=wireframe.shape)  # shape should be (nx,ny,num_dims)
+        
+        x_vectors = wireframe_csdl[1:,:,:] - wireframe_csdl[:1,:,:]
+        y_vectors = wireframe_csdl[:,1:,:] - wireframe_csdl[:,:1,:]
+        area_vectors = csdl.cross(x_vectors, y_vectors, axis=-1)
+        area_magnitudes = csdl.pnorm(area_vectors, pnorm_type=2, axis=-1)
+        wireframe_area = csdl.sum(area_magnitudes)
+        self.register_output('output', wireframe_area)
+
+def wireframe_area(wireframe):
+    '''
+    Calculates the area of a surface based on a wireframe mesh
+
+    NOTE: derivative model is not implemented.
+
+    Parameters
+    ----------
+    wireframe : am.MappedArray
+        The wireframe mapped array that will be used to compute the area
+    '''
+    return NonlinearMappedArray(input=wireframe, csdl_model=WireframeAreaModel(wireframe=wireframe), derivative_csdl_model=None)
+
+
 def custom_nonlinear_operation(input, csdl_model, derivative_csdl_model=None):
     '''
     Performs a custom operation defined by the csdl model. Derivative CSDL model is noecessary for computing derivatives.
