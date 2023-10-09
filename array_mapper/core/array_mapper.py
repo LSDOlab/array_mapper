@@ -396,7 +396,7 @@ class NonlinearMappedArray:
         return self.second_derivative
 
 
-def vstack(tup:tuple, combinte_inputs:bool=None):
+def vstack(tup:tuple, combinte_inputs:bool=None) -> MappedArray:
     '''
     Stacks a tuple of arrays.
 
@@ -675,6 +675,8 @@ def linear_combination(start, stop, num_steps=50, start_weights=None, stop_weigh
         linspace(start, stop, num_steps, combine_inputs, offset)
 
     num_per_step = _num_elements(start.value)
+    if num_per_step != start.linear_map.shape[0] and np.prod(start.shape) == start.linear_map.shape[0]:
+        num_per_step = np.prod(start.shape)
     map_num_outputs = num_steps*num_per_step
     map_num_inputs = num_per_step
     map_start = sps.lil_array((map_num_outputs, map_num_inputs))
@@ -880,7 +882,7 @@ def _num_elements(x):
     if len(x.shape) == 1 :
         return x.shape[0]
     else:
-        return np.cumprod(x.shape[:-1])[-1]
+        return np.prod(x.shape[:-1])
 
 def _arrays_are_equal(a:np.ndarray, b:np.ndarray):
     difference = a - b
@@ -908,7 +910,7 @@ def _vstack_maps(map1, map2):
     elif sps.isspmatrix(map1) and type(map2) is np.ndarray:
         return np.vstack((map1.toarray(), map2))
     else:
-        return Exception("Array Mapper is trying to vertically stack maps that aren't numpy arrays or scipy sparse matrices")
+        raise Exception("Array Mapper is trying to vertically stack maps that aren't numpy arrays or scipy sparse matrices")
     
 def _diag_stack_maps(map1, map2):
     if type(map1) is np.ndarray and type(map2) is np.ndarray:
@@ -920,7 +922,7 @@ def _diag_stack_maps(map1, map2):
     elif sps.isspmatrix(map1) and type(map2) is np.ndarray:
         return scipy.linalg.block_diag(map1.toarray(), map2)
     else:
-        return Exception("Array Mapper is trying to diagonally stack maps that aren't numpy arrays or scipy sparse matrices")
+        raise Exception("Array Mapper is trying to diagonally stack maps that aren't numpy arrays or scipy sparse matrices")
 
 
 if __name__ == "__main__":
